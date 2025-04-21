@@ -1,5 +1,5 @@
-token = ""
-wallet_bot = ""
+token = "5872430886:AAEQUtZ8Sb9JaAK8gcLnDjcrn1DonGameIQ"
+wallet_bot = "TQxzn7A4NRYWjFuHZx1hM1KR9TyM7X5gnD"
 admin_ids = []
 
 from telebot.async_telebot import AsyncTeleBot
@@ -19,6 +19,8 @@ backhome_admin_keyboard = InlineKeyboardMarkup()
 backhome_admin_keyboard.add(
     InlineKeyboardButton(makeFont("back home 🏠"), callback_data="backhome_admin")
 )
+
+print(asyncio.run(bot.get_me()))
 
 @bot.message_handler()
 async def onMessage(message: Message):
