@@ -13,7 +13,7 @@ class SectorManager(object):
         if not os.path.exists("underprintfiles"):
             os.mkdir("underprintfiles")
         
-        self.manage.execute("CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, file_ids TEXT, verified INTEGER)")
+        self.manage.execute("CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, file_ids TEXT, verified INTEGER, step TEXT)")
         self.manage.execute("CREATE TABLE IF NOT EXISTS transes (from_wallet TEXT PRIMARY KEY)")
 
     async def doesWalletExist(self, wallet: str) -> bool:
@@ -58,10 +58,11 @@ class SectorManager(object):
                 "status": "EXISTS_USER"
             }
         
-        self.manage.execute("INSERT INTO users (uid, file_ids, verified) VALUES (?, ?, ?)", (
+        self.manage.execute("INSERT INTO users (uid, file_ids, verified, step) VALUES (?, ?, ?, ?)", (
             uid,
             "[]",
-            0
+            0,
+            ""
         ))
 
         self.manage.commit()
@@ -115,6 +116,24 @@ class SectorManager(object):
 
             self.manage.execute("UPDATE users SET verified = ? WHERE uid = ?", (
                 user.user.verified,
+                uid
+            ))
+            self.manage.commit()
+
+            return {
+                "status": "OK"
+            }
+        
+        else: return {
+            "status": "INVALID_UID"
+        }
+
+    async def addStep(self, uid: int, step: str):
+        user = await self.getUserById(uid)
+
+        if user.status == "OK":
+            self.manage.execute("UPDATE users SET step = ? WHERE uid = ?", (
+                step,
                 uid
             ))
             self.manage.commit()

@@ -10,10 +10,12 @@ class User(object):
             self.uid: int = self.ur[0]
             self.file_ids: list[str] = json.loads(self.ur[1])
             self.verified: bool = True if self.ur[2] == 1 else False
+            self.step: str = self.ur[3]
         else:
             self.uid: int = 0
             self.file_ids: list[str] = []
             self.verified: bool = False
+            self.step: str = ""
 
 class UserResponse(object):
     def __init__(self, results: dict = {}):
