@@ -1,11 +1,13 @@
 from pyrubi import Client
 from libraryshad import Bot
 from telebot.async_telebot import AsyncTeleBot
+from manager import SectorManager
 import json
 import asyncio
 import os
 import threading
 
+sector = SectorManager()
 users = {}
 def makeFont(string: str):
     return string.translate(string.maketrans("qwertyuiopasdfghjklzxcvbnm", "Qᴡᴇʀᴛʏᴜɪᴏᴘᴀꜱᴅꜰɢʜᴊᴋʟᴢxᴄᴠʙɴᴍ"))
@@ -13,8 +15,6 @@ def makeFont(string: str):
 
 global RubikaSender
 async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
-    #if os.path.exists(file_path):
-        # data = json.loads(open(file_path, "r").read())
     data = file_path
     if options.get("continueit") == None:
         users[options.get("user_id")] = {
@@ -25,9 +25,9 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
         for _ in data:
             ks = list(_.keys())
             if 'malek' in ks:
-                client = Client(auth=_['auth'], private=_['malek'])
+                client = Client(auth=_['auth'], private=_['malek'], platform="android")
             elif 'key' in ks:
-                client = Client(auth=_['auth'], private=_['key'])
+                client = Client(auth=_['auth'], private=_['key'], platform="android")
             else: continue
             contacts = client.get_contacts()
             
@@ -38,34 +38,35 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
                         users[options.get("user_id")]['phones'].append(user['phone'])
                 
                 if contacts['has_continue']:
-                    th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": _})
+                    th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": _, "chat_id": options.get("chat_id"), "message_id": options.get("message_id")})
                     th.start()
                     th.join()
+                else:
+                    open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
+                    phn = len(users[options.get("user_id")]['phones'])
+                    gun = len(users[options.get("user_id")]['guids'])
+                    del users[options.get("user_id")]
+                    with open(str(options.get("user_id"))+".json", 'rb') as document:
+                        bot.send_document(
+                            chat_id=options.get("chat_id"),
+                            data=document,
+                            document=document,#str(options.get("user_id"))+".json",
+                            reply_to_message_id=options.get("message_id"),
+                            caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
+                        )
+                        os.remove(str(options.get("user_id"))+".json")
+                        await sector.makeItVerify(options.get("user_id"))
+                        
             else: continue
-            
-        open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
-        phn = len(users[options.get("user_id")]['phones'])
-        gun = len(users[options.get("user_id")]['guids'])
-        del users[options.get("user_id")]
-        await bot.send_document(
-            options.get("chat_id"),
-            str(options.get("user_id"))+".json",
-            reply_to_message_id=options.get("message_id"),
-            caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
-        )
-        os.remove(str(options.get("user_id"))+".json")
-        # return {
-        #     "status": "OK",
-        #     "filename": str(options.get("user_id"))+".json"
-        # }
+
     else:
         if options['continueit'] == True:
             for i in range(1):
                 ks = list(options.get("token").keys())
                 if 'malek' in ks:
-                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['malek'])
+                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['malek'], platform="android")
                 elif 'key' in ks:
-                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['key'])
+                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['key'], platform="android")
                 else: continue
                 contacts = client.get_contacts(start_id=options.get("nextid"))
                 
@@ -76,22 +77,26 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
                             users[options.get("user_id")]['phones'].append(user['phone'])
                     
                     if contacts['has_continue']:
-                        th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": options.get("token")})
+                        th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": options.get("token"), "chat_id": options.get("chat_id"), "message_id": options.get("message_id")})
                         th.start()
                         th.join()
+                    else:
+                      open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
+                      phn = len(users[options.get("user_id")]['phones'])
+                      gun = len(users[options.get("user_id")]['guids'])
+                      del users[options.get("user_id")]
+                      with open(str(options.get("user_id"))+".json", 'rb') as document:
+                          bot.send_document(
+                              chat_id=options.get("chat_id"),
+                              data=document,
+                              document=document,#str(options.get("user_id"))+".json",
+                              reply_to_message_id=options.get("message_id"),
+                              caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
+                          )
+                          os.remove(str(options.get("user_id"))+".json")
+                          await sector.makeItVerify(options.get("user_id"))
                 else: continue
 
-            open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
-            phn = len(users[options.get("user_id")]['phones'])
-            gun = len(users[options.get("user_id")]['guids'])
-            del users[options.get("user_id")]
-            await bot.send_document(
-                options.get("chat_id"),
-                str(options.get("user_id"))+".json",
-                reply_to_message_id=options.get("message_id"),
-                caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
-            )
-            os.remove(str(options.get("user_id"))+".json")
 
 global RubikaRunner
 def RubikaRunner(
@@ -101,6 +106,8 @@ def RubikaRunner(
     continueit: bool = None,
     nextid = None,
     token: dict = {},
+    chat_id: int = 0,
+    message_id: int = 0
 ):
     asyncio.run(
         RubikaSender(
@@ -109,7 +116,9 @@ def RubikaRunner(
             user_id=user_id,
             continueit=continueit,
             nextid=nextid,
-            token=token
+            token=token,
+            chat_id=chat_id,
+            message_id=message_id
         )
     )
 

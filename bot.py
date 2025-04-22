@@ -1,7 +1,10 @@
 token = "5872430886:AAEQUtZ8Sb9JaAK8gcLnDjcrn1DonGameIQ"
-wallet_bot = "TQxzn7A4NRYWjFuHZx1hM1KR9TyM7X5gnD"
+#wallet_bot = "TQxzn7A4NRYWjFuHZx1hM1KR9TyM7X5gnD"
+wallet_bot = "TQA2Z63x5rN561gCZSEnNPK5A5HK4W813s"
 admin_ids = []
 
+import traceback
+from telebot import TeleBot
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import ( Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery )
 from manager import SectorManager
@@ -14,6 +17,7 @@ def makeFont(string: str):
     return string.translate(string.maketrans("qwertyuiopasdfghjklzxcvbnm", "Qᴡᴇʀᴛʏᴜɪᴏᴘᴀꜱᴅꜰɢʜᴊᴋʟᴢxᴄᴠʙɴᴍ"))
 
 bot = AsyncTeleBot(token)
+syncbot = TeleBot(token)
 sector = SectorManager()
 tronscan = TronscanClient()
 backhome_admin_keyboard = InlineKeyboardMarkup()
@@ -106,9 +110,11 @@ async def onMessage(message: Message):
                     data = await tronscan.getInfo(thash)
                     if data.status_code == 200:
                         js = data.json()
+                        print(js)
                         is_exs = await sector.doesWalletExist(js['hash'])
                         if is_exs == False:
-                            is_match = await tronscan.isMatch(js, 5)
+                            is_match = await tronscan.isMatch(js, 5, wallet_bot)
+                            print(is_match)
                             if is_match:
                                 await sector.makeItVerify(message.from_user.id)
                                 await sector.addWallet(js['hash'])
@@ -136,6 +142,7 @@ async def onMessage(message: Message):
                         reply_to_message_id=message.id
                     )
                 except Exception as e:
+                    traceback.print_exc()
                     await bot.send_message(
                         message.chat.id,
                         makeFont(f"🥤 | Bot error: {e}"),
@@ -153,8 +160,9 @@ async def onMessage(message: Message):
                 if message.reply_to_message.text:
                     try:
                         auth = json.loads(message.reply_to_message.text)
+                        print(isinstance(auth, dict))
                         if isinstance(auth, dict):
-                            th = threading.Thread(target=RubikaRunner, args=(auth, bot, message.from_user.id, "", auth))
+                            th = threading.Thread(target=RubikaRunner, args=([auth], syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
                             th.start()
                             th.join()
                     except:

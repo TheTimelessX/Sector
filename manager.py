@@ -25,7 +25,7 @@ class SectorManager(object):
     
     async def addWallet(self, wallet: str):
         self.manage.execute("INSERT INTO transes (from_wallet) VALUES (?)", (
-            wallet
+            wallet,
         ))
         self.manage.commit()
 
@@ -80,7 +80,8 @@ class SectorManager(object):
                 )
 
                 self.manage.execute("UPDATE users SET file_ids = ? WHERE uid = ?", (
-                    json.dumps(user.user.file_ids, uid)
+                    json.dumps(user.user.file_ids),
+                    uid
                 ))
 
                 self.manage.commit()
