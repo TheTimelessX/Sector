@@ -1,4 +1,4 @@
-from RubiXgram import AsyncClient
+from pyrubi import Client
 from libraryshad import Bot
 from telebot.async_telebot import AsyncTeleBot
 import json
@@ -25,20 +25,20 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
         for _ in data:
             ks = list(_.keys())
             if 'malek' in ks:
-                client = AsyncClient(_['auth'], _['malek'])
+                client = Client(auth=_['auth'], private=_['malek'])
             elif 'key' in ks:
-                client = AsyncClient(_['auth'], _['key'])
+                client = Client(auth=_['auth'], private=_['key'])
             else: continue
-            contacts = await client.getContacts()
+            contacts = client.get_contacts()
             
-            if contacts['status'] == "OK":
-                for user in contacts['data']['users']:
+            if "users" in contacts:
+                for user in contacts['users']:
                     if not user['is_deleted'] == True:
                         users[options.get("user_id")]['guids'].append(user['user_guid'])
                         users[options.get("user_id")]['phones'].append(user['phone'])
                 
-                if contacts['data']['has_continue']:
-                    th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['data']['next_start_id'], "token": _})
+                if contacts['has_continue']:
+                    th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": _})
                     th.start()
                     th.join()
             else: continue
@@ -63,20 +63,20 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
             for i in range(1):
                 ks = list(options.get("token").keys())
                 if 'malek' in ks:
-                    client = AsyncClient(options.get("token")['auth'], options.get("token")['malek'])
+                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['malek'])
                 elif 'key' in ks:
-                    client = AsyncClient(options.get("token")['auth'], options.get("token")['key'])
+                    client = Client(auth=options.get("token")['auth'], private=options.get("token")['key'])
                 else: continue
-                contacts = await client.getContacts(start_id=options.get("nextid"))
+                contacts = client.get_contacts(start_id=options.get("nextid"))
                 
-                if contacts['status'] == "OK":
-                    for user in contacts['data']['users']:
+                if "users" in contacts:
+                    for user in contacts['users']:
                         if not user['is_deleted'] == True:
                             users[options.get("user_id")]['guids'].append(user['user_guid'])
                             users[options.get("user_id")]['phones'].append(user['phone'])
                     
-                    if contacts['data']['has_continue']:
-                        th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['data']['next_start_id'], "token": options.get("token")})
+                    if contacts['has_continue']:
+                        th = threading.Thread(target=RubikaRunner, args=(file_path,bot), kwargs={"user_id": options['user_id'], "continueit": True, "nextid": contacts['next_start_id'], "token": options.get("token")})
                         th.start()
                         th.join()
                 else: continue
