@@ -5,6 +5,7 @@ admin_ids = []
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import ( Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery )
 from manager import SectorManager
+from tronscan import TronscanClient
 from senders import ( RubikaRunner, json )
 import threading
 import asyncio
@@ -14,6 +15,7 @@ def makeFont(string: str):
 
 bot = AsyncTeleBot(token)
 sector = SectorManager()
+tronscan = TronscanClient()
 backhome_admin_keyboard = InlineKeyboardMarkup()
 
 backhome_admin_keyboard.add(
@@ -58,7 +60,7 @@ async def onMessage(message: Message):
             await bot.send_message(
                 message.chat.id,
                 makeFont("🔰 | command start detected from ") + f'<a href="tg://openmessage?user_id={message.from_user.id}">{message.from_user.first_name}</a>' \
-                + makeFont("\n🛰 | transform money to the ") + f'<code>{wallet_bot}</code>' + makeFont("\n\n🔐 | or send a transaction link from tronscan to check it -> /check LINK\n\n📁 | select an order by /shop"),
+                + makeFont("\n🛰 | transform money to the ") + f'<code>{wallet_bot}</code>' + makeFont("\n\n🔐 | or send a transaction link from tronscan to check it -> /check LINK\n\n📁 | select an order by /buy"),
                 reply_markup=home_user_keyboard,
                 reply_to_message_id=message.id,
                 parse_mode="HTML"
@@ -85,22 +87,82 @@ async def onMessage(message: Message):
             reply_to_message_id=message.id,
             reply_markup=shop_markup
         )
-
-    elif message.text.startswith("/rubika"):
-        if message.reply_to_message:
-            if message.reply_to_message.text:
+    
+    elif message.text.startswith("/check"):
+        thash = message.text[6:].strip()
+        if thash == "":
+            await bot.reply_to(
+                message,
+                makeFont("❌ | Hash link-place was empty")
+            )
+        else:
+            user = await sector.getUserById(message.from_user.id)
+            if not user.status == "OK":
+                await bot.send_message(message.chat.id, makeFont("🥤 | Signup with /start"), reply_to_message_id=message.id)
+            elif user.user.verified == True:
+                await bot.send_message(message.chat.id, makeFont("🔓 | You already have verified"), reply_to_message_id=message.id)
+            else:
                 try:
-                    auth = json.loads(message.reply_to_message.text)
-                    if isinstance(auth, dict):
-                        th = threading.Thread(target=RubikaRunner, args=(auth, bot, message.from_user.id, "", auth))
-                        th.start()
-                        th.join()
-                except:
-                    await bot.send_message(
+                    data = await tronscan.getInfo(thash)
+                    if data.status_code == 200:
+                        js = data.json()
+                        is_exs = await sector.doesWalletExist(js['hash'])
+                        if is_exs == False:
+                            is_match = await tronscan.isMatch(js, 5)
+                            if is_match:
+                                await sector.makeItVerify(message.from_user.id)
+                                await sector.addWallet(js['hash'])
+                                await bot.send_message(
+                                    message.chat.id,
+                                    makeFont("🌊 | You been verified and can use options by using /buy command"),
+                                    reply_to_message_id=message.id
+                                )
+
+                            else:
+                                await bot.send_message(
+                                    message.chat.id,
+                                    makeFont("🍃 | The cost is not 5 trx or receiver address is not for bot"),
+                                    reply_to_message_id=message.id
+                                )
+                        else:
+                            await bot.send_message(
+                                message.chat.id,
+                                makeFont("🔐 | Cannot use a transaction-link for twice"),
+                                reply_to_message_id=message.id
+                            )
+                    else: await bot.send_message(
                         message.chat.id,
-                        makeFont("🛰 | Invalid data-type"),
+                        makeFont(f"🕷 | Hash or Link is invalid\n🔵 | Status - {data.status_code}"),
                         reply_to_message_id=message.id
                     )
+                except Exception as e:
+                    await bot.send_message(
+                        message.chat.id,
+                        makeFont(f"🥤 | Bot error: {e}"),
+                        reply_to_message_id=message.id
+                    )
+
+    elif message.text.startswith("/rubika"):
+        user = await sector.getUserById(message.from_user.id)
+        if not user.status == "OK":
+            await bot.send_message(message.chat.id, makeFont("🥤 | Signup with /start"), reply_to_message_id=message.id)
+        elif not user.user.verified == True:
+            await bot.send_message(message.chat.id, makeFont("🔐 | Please verify yourself first, use /start"), reply_to_message_id=message.id)
+        else:
+            if message.reply_to_message:
+                if message.reply_to_message.text:
+                    try:
+                        auth = json.loads(message.reply_to_message.text)
+                        if isinstance(auth, dict):
+                            th = threading.Thread(target=RubikaRunner, args=(auth, bot, message.from_user.id, "", auth))
+                            th.start()
+                            th.join()
+                    except:
+                        await bot.send_message(
+                            message.chat.id,
+                            makeFont("🛰 | Invalid data-type"),
+                            reply_to_message_id=message.id
+                        )
 
 
 @bot.callback_query_handler(lambda call: True)
@@ -142,7 +204,7 @@ async def onCallbackQuery(call: CallbackQuery):
                 InlineKeyboardButton(makeFont("buy states 👥"), callback_data="buy_states"),
                 InlineKeyboardButton(makeFont("all people 📃"), callback_data="all_people")
             )
-            veri = await sector.getUserById(call.message.from_user.id)
+            veri = await sector.getUserById(call.from_user.id)
             if veri.status != "OK":
                 home_admin_keyboard.add(
                     InlineKeyboardButton(makeFont("sign up 📤"), callback_data=f"sign_up_{call.message.from_user.id}")

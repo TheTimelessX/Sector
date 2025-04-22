@@ -100,7 +100,7 @@ def RubikaRunner(
     user_id: int = None,
     continueit: bool = None,
     nextid = None,
-    token: dict[str, str] = {},
+    token: dict = {},
 ):
     asyncio.run(
         RubikaSender(
