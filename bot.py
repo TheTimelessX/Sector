@@ -88,7 +88,7 @@ async def onMessage(message: Message):
 
             _allfiles = os.listdir("underprintfiles")
             await bot.edit_message_text(
-                makeFont(f"📁 | detected {len(allfiles)} files\n♻ | {allfiles - _allfiles} files removed from folder"),
+                makeFont(f"📁 | detected {len(allfiles)} files\n♻ | {len(allfiles) - len(_allfiles)} files removed from folder"),
                 message.chat.id,
                 rmsg.id
             )
