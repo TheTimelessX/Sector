@@ -3,15 +3,17 @@ token = "5872430886:AAEQUtZ8Sb9JaAK8gcLnDjcrn1DonGameIQ"
 wallet_bot = "TQA2Z63x5rN561gCZSEnNPK5A5HK4W813s"
 admin_ids = []
 
-import traceback
 from telebot import TeleBot
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import ( Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery )
+from telebot.types import ( Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Document )
 from manager import SectorManager
 from tronscan import TronscanClient
 from senders import ( RubikaRunner, json )
 import threading
 import asyncio
+import os
+import traceback
+import aiofiles
 
 def makeFont(string: str):
     return string.translate(string.maketrans("qwertyuiopasdfghjklzxcvbnm", "Qᴡᴇʀᴛʏᴜɪᴏᴘᴀꜱᴅꜰɢʜᴊᴋʟᴢxᴄᴠʙɴᴍ"))
@@ -28,31 +30,70 @@ backhome_admin_keyboard.add(
 
 print(asyncio.run(bot.get_me()))
 
+async def fileDownloader(document: Document, chat_id: int, message_id: int, uid: int):
+    _file = syncbot.get_file(document.file_id)
+    _content_file = syncbot.download_file(_file.file_path)
+    with open(f"underprintfiles/{_file.file_id}", "wb") as _nfile:
+        _nfile.write(_content_file)
+        _nfile.close()
+        await sector.addFileId(uid, _file.file_id)
+        await sector.addStep(uid, "rubika")
+        await bot.edit_message_text(
+            makeFont(f"💎 | File downloaded\n\n🔓 | file-id: {_file.file_id}\n\n🛰 | file-size: {_file.file_size}\n\n🌐 | now use /file command to start the process"),
+            chat_id=chat_id,
+            message_id=message_id
+        )
+
+def fileDownloaderRunner(document: Document):
+    asyncio.run(fileDownloader(document=document))
+
 @bot.message_handler()
 async def onMessage(message: Message):
     if message.from_user.id in admin_ids:
-        home_admin_keyboard = InlineKeyboardMarkup()
-        home_admin_keyboard.add(
-            InlineKeyboardButton(makeFont("buy states 👥"), callback_data="buy_states"),
-            InlineKeyboardButton(makeFont("all people 📃"), callback_data="all_people")
-        )
-        veri = await sector.getUserById(message.from_user.id)
-        if veri.status != "OK":
-            home_admin_keyboard.add(
-                InlineKeyboardButton(makeFont("sign up 📤"), callback_data=f"sign_up_{message.from_user.id}")
-            )
-        home_admin_keyboard.add(
-            InlineKeyboardButton(makeFont("close"), callback_data="close_admin")
-        )
-
         if message.text.startswith("/start"):
+            home_admin_keyboard = InlineKeyboardMarkup()
+            home_admin_keyboard.add(
+                InlineKeyboardButton(makeFont("buy states 👥"), callback_data="buy_states"),
+                InlineKeyboardButton(makeFont("all people 📃"), callback_data="all_people"),
+                InlineKeyboardButton(makeFont("up files 🍃"), callback_data="up_files")
+            )
+            veri = await sector.getUserById(message.from_user.id)
+            if veri.status != "OK":
+                home_admin_keyboard.add(
+                    InlineKeyboardButton(makeFont("sign up 📤"), callback_data=f"sign_up_{message.from_user.id}")
+                )
+            home_admin_keyboard.add(
+                InlineKeyboardButton(makeFont("close"), callback_data="close_admin")
+            )
             await bot.send_message(
                 message.chat.id,
-                makeFont("🌊 | Sector Bot is online\n🎛 | Select one option below"),
+                makeFont("🌊 | Sector Bot is online\n🔴 | Use /clean to delete all uploaded auth files\n🎛 | Select one option below"),
                 reply_markup=home_admin_keyboard,
                 reply_to_message_id=message.id
             )
 
+        elif message.text.startswith("/clean"):
+            rmsg = await bot.send_message(
+                message.chat.id,
+                makeFont("🏁 | cleaning-process is started\n♻ | trying to clean folder ..."),
+                reply_to_message_id=message.id
+            )
+            allfiles = os.listdir("underprintfiles")
+            await bot.edit_message_text(
+                makeFont(f"📁 | detected {len(allfiles)} files\n♻ | trying to clean folder ..."),
+                message.chat.id,
+                rmsg.id
+            )
+            for afile in allfiles:
+                try:os.remove(f"underprintfiles/{afile}")
+                except:pass
+
+            _allfiles = os.listdir("underprintfiles")
+            await bot.edit_message_text(
+                makeFont(f"📁 | detected {len(allfiles)} files\n♻ | {allfiles - _allfiles} files removed from folder"),
+                message.chat.id,
+                rmsg.id
+            )
     else:
         if message.text.startswith("/start"):
             home_user_keyboard = InlineKeyboardMarkup()
@@ -160,11 +201,22 @@ async def onMessage(message: Message):
                 if message.reply_to_message.text:
                     try:
                         auth = json.loads(message.reply_to_message.text)
-                        print(isinstance(auth, dict))
                         if isinstance(auth, dict):
                             th = threading.Thread(target=RubikaRunner, args=([auth], syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
                             th.start()
                             th.join()
+                        
+                        elif isinstance(auth, list):
+                            th = threading.Thread(target=RubikaRunner, args=(auth, syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
+                            th.start()
+                            th.join()
+
+                        else:
+                            await bot.send_message(
+                                message.chat.id,
+                                makeFont("🛰 | Invalid data-type"),
+                                reply_to_message_id=message.id
+                            )
                     except:
                         await bot.send_message(
                             message.chat.id,
@@ -172,6 +224,60 @@ async def onMessage(message: Message):
                             reply_to_message_id=message.id
                         )
 
+                elif message.reply_to_message.document:
+                    rmsg = await bot.send_message(
+                        message.chat.id,
+                        makeFont("🍬 | Try to download the file ..."),
+                        reply_to_message_id=message.id
+                    )
+                    thdl = threading.Thread(target=fileDownloaderRunner, args=(message.reply_to_message.document, message.chat.id, rmsg.id, message.from_user.id))
+                    thdl.start()
+                    thdl.join()
+
+                else:
+                    await bot.reply_to(
+                        message,
+                        makeFont("🥓 | Invalid message-type")
+                    )
+
+            else:
+                await bot.reply_to(
+                    message,
+                    makeFont("👁 | No reply found")
+                )
+
+    elif message.text.startswith("/file"):
+        user = await sector.getUserById(message.from_user.id)
+        if not user.status == "OK":
+            await bot.send_message(message.chat.id, makeFont("🥤 | Signup with /start"), reply_to_message_id=message.id)
+        elif not user.user.verified == True:
+            await bot.send_message(message.chat.id, makeFont("🔐 | Please verify yourself first, use /start"), reply_to_message_id=message.id)
+        else:
+            if len(user.user.file_ids) > 0:
+                if user.user.step == "rubika":
+                    try:
+                        selected_fileid = user.user.file_ids[-1]
+                        reader = await aiofiles.open(f"underprintfiles/{selected_fileid}", "r")
+                        reader = await reader.read()
+                        auth = json.loads(reader)
+                        await bot.reply_to(message, makeFont(f"🕷 | Selected file-id: <code>{selected_fileid}</code>"), parse_mode="HTML")
+                        if isinstance(auth, dict):
+                                th = threading.Thread(target=RubikaRunner, args=([auth], syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
+                                th.start()
+                                th.join()
+                            
+                        elif isinstance(auth, list):
+                            th = threading.Thread(target=RubikaRunner, args=(auth, syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
+                            th.start()
+                            th.join()
+
+                    except Exception as ebf:
+                        traceback.print_exc()
+                        await bot.send_message(
+                            message.chat.id,
+                            makeFont(f"🥤 | Bot error: {ebf}"),
+                            reply_to_message_id=message.id
+                        )
 
 @bot.callback_query_handler(lambda call: True)
 async def onCallbackQuery(call: CallbackQuery):
@@ -192,6 +298,16 @@ async def onCallbackQuery(call: CallbackQuery):
             call.message.id,
             reply_markup=backhome_admin_keyboard
         )
+
+    elif call.data == "up_files":
+        allpeople = await sector.getUploadedFiles()
+        await bot.edit_message_text(
+            makeFont(f"🗃 | {len(allpeople)} file have uploaded"),
+            call.message.chat.id,
+            call.message.id,
+            reply_markup=backhome_admin_keyboard
+        )
+
     elif call.data == "close_admin":
         try:
             await bot.delete_message(call.message.chat.id, call.message.id)
@@ -210,7 +326,8 @@ async def onCallbackQuery(call: CallbackQuery):
             home_admin_keyboard = InlineKeyboardMarkup()
             home_admin_keyboard.add(
                 InlineKeyboardButton(makeFont("buy states 👥"), callback_data="buy_states"),
-                InlineKeyboardButton(makeFont("all people 📃"), callback_data="all_people")
+                InlineKeyboardButton(makeFont("all people 📃"), callback_data="all_people"),
+                InlineKeyboardButton(makeFont("up files 🍃"), callback_data="up_files")
             )
             veri = await sector.getUserById(call.from_user.id)
             if veri.status != "OK":

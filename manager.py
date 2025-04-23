@@ -146,3 +146,13 @@ class SectorManager(object):
         else: return {
             "status": "INVALID_UID"
         }
+
+    async def getUploadedFiles(self):
+        ivi = await self.getAll()
+        l = 0
+        for user in ivi:
+            decoded = json.loads(user[1])
+            for fid in decoded:
+                l += 1
+        
+        return l
