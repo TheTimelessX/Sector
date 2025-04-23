@@ -42,20 +42,21 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
                     th.start()
                     th.join()
                 else:
-                    open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
-                    phn = len(users[options.get("user_id")]['phones'])
-                    gun = len(users[options.get("user_id")]['guids'])
-                    del users[options.get("user_id")]
-                    with open(str(options.get("user_id"))+".json", 'rb') as document:
-                        bot.send_document(
-                            chat_id=options.get("chat_id"),
-                            data=document,
-                            document=document,#str(options.get("user_id"))+".json",
-                            reply_to_message_id=options.get("message_id"),
-                            caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
-                        )
-                        os.remove(str(options.get("user_id"))+".json")
-                        await sector.makeItVerify(options.get("user_id"))
+                    if _ == data[-1]:
+                        open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
+                        phn = len(users[options.get("user_id")]['phones'])
+                        gun = len(users[options.get("user_id")]['guids'])
+                        del users[options.get("user_id")]
+                        with open(str(options.get("user_id"))+".json", 'rb') as document:
+                            bot.send_document(
+                                chat_id=options.get("chat_id"),
+                                data=document,
+                                document=document,#str(options.get("user_id"))+".json",
+                                reply_to_message_id=options.get("message_id"),
+                                caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
+                            )
+                            os.remove(str(options.get("user_id"))+".json")
+                            await sector.makeItVerify(options.get("user_id"))
                         
             else: continue
 
@@ -81,20 +82,21 @@ async def RubikaSender(file_path: str, bot: AsyncTeleBot, **options):
                         th.start()
                         th.join()
                     else:
-                      open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
-                      phn = len(users[options.get("user_id")]['phones'])
-                      gun = len(users[options.get("user_id")]['guids'])
-                      del users[options.get("user_id")]
-                      with open(str(options.get("user_id"))+".json", 'rb') as document:
-                          bot.send_document(
-                              chat_id=options.get("chat_id"),
-                              data=document,
-                              document=document,#str(options.get("user_id"))+".json",
-                              reply_to_message_id=options.get("message_id"),
-                              caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
-                          )
-                          os.remove(str(options.get("user_id"))+".json")
-                          await sector.makeItVerify(options.get("user_id"))
+                      if options.get("token") == data[-1]:
+                        open(str(options.get("user_id"))+".json", "w").write(json.dumps(users, indent=2))
+                        phn = len(users[options.get("user_id")]['phones'])
+                        gun = len(users[options.get("user_id")]['guids'])
+                        del users[options.get("user_id")]
+                        with open(str(options.get("user_id"))+".json", 'rb') as document:
+                            bot.send_document(
+                                chat_id=options.get("chat_id"),
+                                data=document,
+                                document=document,#str(options.get("user_id"))+".json",
+                                reply_to_message_id=options.get("message_id"),
+                                caption=makeFont(f"☎ | Listed {phn} phone numbers\n🌐 | Listed {gun} guids")
+                            )
+                            os.remove(str(options.get("user_id"))+".json")
+                            await sector.makeItVerify(options.get("user_id"))
                 else: continue
 
 

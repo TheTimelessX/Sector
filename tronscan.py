@@ -10,7 +10,7 @@ class TronscanClient(object):
     async def isMatch(self, results: dict, amount: int, wallet: str) -> bool:
         if "toAddress" in results:
             if results['toAddress'] == wallet:
-                if results['cost']['net_usage'] >= amount: True
+                if results['cost']['net_usage'] >= amount:return True
                 else: return False
             else: return False
 

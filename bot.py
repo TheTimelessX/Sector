@@ -30,22 +30,20 @@ backhome_admin_keyboard.add(
 
 print(asyncio.run(bot.get_me()))
 
-async def fileDownloader(document: Document, chat_id: int, message_id: int, uid: int):
+def fileDownloader(document: Document, chat_id: int, message_id: int, uid: int):
     _file = syncbot.get_file(document.file_id)
     _content_file = syncbot.download_file(_file.file_path)
     with open(f"underprintfiles/{_file.file_id}", "wb") as _nfile:
         _nfile.write(_content_file)
         _nfile.close()
-        await sector.addFileId(uid, _file.file_id)
-        await sector.addStep(uid, "rubika")
-        await bot.edit_message_text(
+        asyncio.run(sector.addFileId(uid, _file.file_id))
+        asyncio.run(sector.addStep(uid, "rubika"))
+        syncbot.edit_message_text(
             makeFont(f"💎 | File downloaded\n\n🔓 | file-id: {_file.file_id}\n\n🛰 | file-size: {_file.file_size}\n\n🌐 | now use /file command to start the process"),
             chat_id=chat_id,
             message_id=message_id
         )
 
-def fileDownloaderRunner(document: Document):
-    asyncio.run(fileDownloader(document=document))
 
 @bot.message_handler()
 async def onMessage(message: Message):
@@ -230,7 +228,7 @@ async def onMessage(message: Message):
                         makeFont("🍬 | Try to download the file ..."),
                         reply_to_message_id=message.id
                     )
-                    thdl = threading.Thread(target=fileDownloaderRunner, args=(message.reply_to_message.document, message.chat.id, rmsg.id, message.from_user.id))
+                    thdl = threading.Thread(target=fileDownloader, args=(message.reply_to_message.document, message.chat.id, rmsg.id, message.from_user.id))
                     thdl.start()
                     thdl.join()
 
@@ -260,7 +258,7 @@ async def onMessage(message: Message):
                         reader = await aiofiles.open(f"underprintfiles/{selected_fileid}", "r")
                         reader = await reader.read()
                         auth = json.loads(reader)
-                        await bot.reply_to(message, makeFont(f"🕷 | Selected file-id: <code>{selected_fileid}</code>"), parse_mode="HTML")
+                        await bot.reply_to(message, makeFont("🕷 | Selected file-id: ") + f"<code>{selected_fileid}</code>", parse_mode="HTML")
                         if isinstance(auth, dict):
                                 th = threading.Thread(target=RubikaRunner, args=([auth], syncbot, message.from_user.id, None, "", auth, message.chat.id, message.id))
                                 th.start()
@@ -302,7 +300,7 @@ async def onCallbackQuery(call: CallbackQuery):
     elif call.data == "up_files":
         allpeople = await sector.getUploadedFiles()
         await bot.edit_message_text(
-            makeFont(f"🗃 | {len(allpeople)} file have uploaded"),
+            makeFont(f"🗃 | {allpeople} file have uploaded"),
             call.message.chat.id,
             call.message.id,
             reply_markup=backhome_admin_keyboard

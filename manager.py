@@ -24,11 +24,17 @@ class SectorManager(object):
         return False
     
     async def addWallet(self, wallet: str):
-        self.manage.execute("INSERT INTO transes (from_wallet) VALUES (?)", (
-            wallet,
-        ))
-        self.manage.commit()
-
+        wall = await self.doesWalletExist(wallet)
+        if not wall == True:
+            try:
+                self.manage.execute("INSERT INTO transes (from_wallet) VALUES (?)", (
+                    wallet,
+                ))
+                self.manage.commit()
+            except: # Wallet does Exist
+                return {
+                    "status": "OK"
+                }
         return {
             "status": "OK"
         }
